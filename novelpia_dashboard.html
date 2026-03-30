@@ -1,12 +1,414 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novelpia Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>노벨피아 작품 관리 대시보드</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background: #f5f5f3; color: #1a1a1a; font-size: 14px; line-height: 1.6; }
+  header { background: #fff; border-bottom: 1px solid #e0e0dd; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header span { font-size: 12px; color: #888; }
+  .main { padding: 24px; max-width: 1300px; margin: 0 auto; }
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: #fff; border: 1px solid #e8e8e6; border-radius: 10px; padding: 16px; }
+  .stat-card .label { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .stat-card .value { font-size: 24px; font-weight: 600; }
+  .stat-card .value.green { color: #1a8a5a; }
+  .stat-card .value.amber { color: #b97a10; }
+  .add-form { background: #fff; border: 1px solid #e8e8e6; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .add-form h3 { font-size: 14px; font-weight: 600; margin-bottom: 14px; color: #555; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-grid.four { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .form-grid.full { grid-template-columns: 1fr; }
+  input[type=text], input[type=number] { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 7px; font-size: 13px; font-family: inherit; background: #fafaf9; color: #1a1a1a; outline: none; }
+  input[type=text]:focus, input[type=number]:focus { border-color: #666; background: #fff; }
+  label.field-label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
+  .form-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .btn { background: #1a1a1a; color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer; font-weight: 500; }
+  .btn:hover { background: #333; }
+  .btn.secondary { background: #fff; color: #1a1a1a; border: 1px solid #ddd; }
+  .btn.secondary:hover { background: #f5f5f3; }
+  .btn.small { padding: 5px 10px; font-size: 12px; }
+  .bookmarklet-tip { background: #fffbe6; border: 1px solid #f0d060; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #7a6000; margin-bottom: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .bookmarklet-tip strong { font-weight: 600; color: #5a4500; }
+  .bookmarklet-tip code { display: block; background: #fff8d6; border: 1px solid #e8cc50; border-radius: 6px; padding: 8px 12px; font-size: 11px; font-family: 'Courier New', monospace; word-break: break-all; color: #3a2800; cursor: pointer; user-select: all; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 13px; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e8e8e6; border-radius: 10px; overflow: hidden; table-layout: fixed; }
+  thead tr { background: #f8f8f6; }
+  th { text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: #666; border-bottom: 1px solid #e8e8e6; white-space: nowrap; overflow: hidden; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f0f0ee; font-size: 13px; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaf8; }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 3px; }
+  .tag { background: #efefed; color: #555; border-radius: 4px; padding: 2px 6px; font-size: 11px; white-space: nowrap; }
+  .title-link { color: #1a5cbf; text-decoration: none; font-weight: 500; }
+  .title-link:hover { text-decoration: underline; }
+  .author-link { color: #1a5cbf; text-decoration: none; }
+  .author-link:hover { text-decoration: underline; }
+  .viewer-link { color: #1a5cbf; text-decoration: none; font-size: 11px; font-family: 'Courier New', monospace; }
+  .viewer-link:hover { text-decoration: underline; }
+  .status-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 5px; padding: 3px 10px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; transition: opacity 0.15s; }
+  .status-badge:hover { opacity: 0.8; }
+  .status-done { background: #d4edda; color: #1a6b35; }
+  .status-todo { background: #f0f0ee; color: #666; }
+  .status-partial { background: #fff3cd; color: #7a5500; }
+  .progress-wrap { display: flex; align-items: center; gap: 6px; }
+  .progress-bar-bg { flex: 1; height: 5px; background: #e8e8e6; border-radius: 3px; overflow: hidden; min-width: 40px; }
+  .progress-bar-fill { height: 100%; background: #1a8a5a; border-radius: 3px; transition: width 0.3s; }
+  .progress-text { font-size: 11px; color: #888; min-width: 36px; text-align: right; white-space: nowrap; }
+  .actions-cell { display: flex; gap: 5px; }
+  .empty-state { text-align: center; padding: 48px 0; color: #aaa; background: #fff; border: 1px solid #e8e8e6; border-radius: 10px; }
+  .filter-row { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; flex-wrap: wrap; }
+  .filter-row input[type=text] { max-width: 220px; }
+  select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 7px; font-size: 13px; background: #fafaf9; color: #1a1a1a; outline: none; max-width: 140px; }
+  .new-badge { background: #d4edda; color: #1a6b35; font-size: 11px; padding: 2px 7px; border-radius: 4px; margin-left: 6px; }
+  @media (max-width: 700px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .form-grid, .form-grid.three, .form-grid.four { grid-template-columns: 1fr; }
+  }
+</style>
 </head>
 <body>
-    <h1>Welcome to Novelpia Dashboard</h1>
-    <p>This is a simple dashboard for managing your novels.</p>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <h1>📚 노벨피아 작품 대시보드</h1>
+  <span id="last-saved"></span>
+</header>
+
+<div class="main">
+
+  <div class="bookmarklet-tip" id="bm-tip">
+    <strong>🔖 북마클릿 설치 방법</strong>
+    <span>아래 코드를 복사 → 브라우저 북마크 추가 → URL 자리에 붙여넣기. 노벨피아 작품 페이지에서 북마크 클릭하면 <b>이 대시보드가 자동으로 열리면서 데이터가 바로 추가</b>돼요!</span>
+    <code id="bm-code" title="클릭하면 복사됩니다">javascript:(function(){var t=document.querySelector('.epnew-novel-title')?.innerText||document.title.replace('노벨피아 - 웹소설로 꿈꾸는 세상! - ','').trim();var writerEl=document.querySelector('.epnew-writer');var a=writerEl?writerEl.innerText.replace('작가명','').trim().split('\n')[0].trim():'';var authorLink=document.querySelector('.epnew-writer a')?document.querySelector('.epnew-writer a').href:'';var tags=[...new Set([...document.querySelectorAll('.tag')].map(e=>e.innerText.trim()).filter(t=>t&&!t.startsWith('+')).map(t=>t.startsWith('#')?t:'#'+t))].join(',');var epMatch=[...document.querySelectorAll('span,div,b')].find(e=>e.innerText.match(/회차\d+회차/));var ep=epMatch?parseInt(epMatch.innerText.match(/회차(\d+)회차/)[1]):0;var viewerNums=[...document.querySelectorAll('[onclick]')].map(e=>e.getAttribute('onclick')).filter(v=>v&&v.includes('/viewer/')).map(v=>v.match(/\/viewer\/(\d+)/)?.[1]).filter(Boolean).map(Number);var lastViewer=viewerNums.length?Math.max(...viewerNums):0;var url=location.href;var data=encodeURIComponent(JSON.stringify({title:t,author:a,authorLink:authorLink,tags:tags,episodes:ep,url:url,lastViewer:lastViewer}));location.href='https://kgs8805.github.io/my/novelpia_dashboard.html?import='+data;})();</code>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="btn small secondary" onclick="copyBookmarklet()">📋 코드 복사</button>
+      <button class="btn small secondary" onclick="document.getElementById('bm-tip').style.display='none'">닫기</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="label">전체 작품</div><div class="value" id="stat-total">0</div></div>
+    <div class="stat-card"><div class="label">캡처 완료</div><div class="value green" id="stat-done">0</div></div>
+    <div class="stat-card"><div class="label">진행 중</div><div class="value amber" id="stat-partial">0</div></div>
+    <div class="stat-card"><div class="label">미완료</div><div class="value" id="stat-todo">0</div></div>
+  </div>
+
+  <div class="add-form" id="add-form">
+    <h3>+ 작품 추가</h3>
+    <div class="form-grid">
+      <div><label class="field-label">작품명 *</label><input type="text" id="f-title" placeholder="[포켓몬] 포켓몬스터 BW2 리메이크 - 마린과 애니"></div>
+      <div><label class="field-label">작가명</label><input type="text" id="f-author" placeholder="초코맛탱탱겔"></div>
+    </div>
+    <div class="form-grid three">
+      <div><label class="field-label">작품 링크</label><input type="text" id="f-url" placeholder="https://novelpia.com/novel/..."></div>
+      <div><label class="field-label">작가 프로필 링크</label><input type="text" id="f-author-link" placeholder="https://novelpia.com/user/..."></div>
+      <div><label class="field-label">태그 (쉼표로 구분)</label><input type="text" id="f-tags" placeholder="#포켓몬, #이세계, #성장"></div>
+    </div>
+    <div class="form-grid four">
+      <div><label class="field-label">전체 회차 수</label><input type="number" id="f-episodes" placeholder="0" min="0"></div>
+      <div><label class="field-label">완료 회차 수</label><input type="number" id="f-done-ep" placeholder="0" min="0"></div>
+      <div><label class="field-label">마지막 viewer 번호</label><input type="number" id="f-last-viewer" placeholder="5476947" min="0"></div>
+      <div style="display:flex;align-items:flex-end;"><a id="f-viewer-preview" href="#" target="_blank" style="font-size:12px;color:#1a5cbf;display:none;">→ 마지막 회차 열기</a></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" onclick="addWork()">추가하기</button>
+      <button class="btn secondary" onclick="clearForm()">초기화</button>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <input type="text" id="search-input" placeholder="🔍 작품명, 작가, 태그 검색..." oninput="renderTable()">
+    <select id="status-filter" onchange="renderTable()">
+      <option value="">전체 상태</option>
+      <option value="done">캡처 완료</option>
+      <option value="partial">진행 중</option>
+      <option value="todo">미완료</option>
+    </select>
+    <button class="btn secondary small" onclick="exportCSV()">📤 CSV 내보내기</button>
+    <button class="btn secondary small" onclick="exportJSON()">💾 JSON 백업</button>
+    <label class="btn secondary small" style="cursor:pointer;display:inline-block;">
+      📥 JSON 복원 <input type="file" accept=".json" style="display:none" onchange="importJSON(event)">
+    </label>
+  </div>
+
+  <div id="table-container"></div>
+</div>
+
+<script>
+let works = [];
+let editingId = null;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+document.getElementById('f-last-viewer').addEventListener('input', function() {
+  const link = document.getElementById('f-viewer-preview');
+  if (this.value && parseInt(this.value) > 0) {
+    link.href = 'https://novelpia.com/viewer/' + this.value;
+    link.style.display = 'inline';
+  } else { link.style.display = 'none'; }
+});
+
+function loadData() {
+  try { const raw = localStorage.getItem('novelpia_dash_v2'); if (raw) works = JSON.parse(raw); } catch(e) { works = []; }
+}
+
+function saveData() {
+  localStorage.setItem('novelpia_dash_v2', JSON.stringify(works));
+  const now = new Date();
+  document.getElementById('last-saved').textContent =
+    `저장됨 ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+}
+
+function checkImportFromURL() {
+  const params = new URLSearchParams(location.search);
+  const raw = params.get('import');
+  if (!raw) return;
+  try {
+    const d = JSON.parse(decodeURIComponent(raw));
+    // 중복 체크
+    const exists = works.find(w => w.url === d.url);
+    if (exists) {
+      // 기존 항목 업데이트 (회차수, lastViewer 갱신)
+      exists.episodes = d.episodes || exists.episodes;
+      exists.lastViewer = Math.max(d.lastViewer || 0, exists.lastViewer || 0);
+      exists.tags = d.tags ? d.tags.split(',').map(t=>t.trim()).filter(Boolean) : exists.tags;
+      exists.updatedAt = Date.now();
+      saveData(); renderTable(); updateStats();
+      showToast('✅ 기존 작품 정보가 업데이트됐어요: ' + d.title);
+    } else {
+      // 새 작품 추가
+      works.unshift({
+        id: Date.now(),
+        title: d.title || '',
+        author: d.author || '',
+        authorLink: d.authorLink || '',
+        url: d.url || '',
+        episodes: d.episodes || 0,
+        doneEpisodes: 0,
+        lastViewer: d.lastViewer || 0,
+        tags: d.tags ? d.tags.split(',').map(t=>t.trim()).filter(Boolean) : [],
+        createdAt: Date.now(), updatedAt: Date.now(),
+        isNew: true
+      });
+      saveData(); renderTable(); updateStats();
+      showToast('✅ 새 작품이 추가됐어요: ' + d.title);
+    }
+    // URL에서 import 파라미터 제거
+    history.replaceState(null, '', location.pathname);
+  } catch(e) { console.error('import error', e); }
+}
+
+function getStatus(w) {
+  if (!w.episodes || w.episodes === 0) return 'todo';
+  if (w.doneEpisodes >= w.episodes) return 'done';
+  if (w.doneEpisodes > 0) return 'partial';
+  return 'todo';
+}
+
+function statusLabel(s) {
+  if (s === 'done') return ['status-done', '✓ 완료'];
+  if (s === 'partial') return ['status-partial', '◑ 진행 중'];
+  return ['status-todo', '○ 미완료'];
+}
+
+function addWork() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { alert('작품명을 입력해주세요.'); return; }
+  const eps = parseInt(document.getElementById('f-episodes').value) || 0;
+  const doneEps = parseInt(document.getElementById('f-done-ep').value) || 0;
+  const lastViewer = parseInt(document.getElementById('f-last-viewer').value) || 0;
+  const tagsRaw = document.getElementById('f-tags').value.trim();
+  const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
+
+  if (editingId !== null) {
+    const idx = works.findIndex(w => w.id === editingId);
+    if (idx !== -1) {
+      works[idx] = { ...works[idx], title,
+        author: document.getElementById('f-author').value.trim(),
+        authorLink: document.getElementById('f-author-link').value.trim(),
+        url: document.getElementById('f-url').value.trim(),
+        episodes: eps, doneEpisodes: doneEps, lastViewer, tags, updatedAt: Date.now() };
+    }
+    editingId = null;
+    document.querySelector('#add-form h3').textContent = '+ 작품 추가';
+  } else {
+    works.unshift({ id: Date.now(), title,
+      author: document.getElementById('f-author').value.trim(),
+      authorLink: document.getElementById('f-author-link').value.trim(),
+      url: document.getElementById('f-url').value.trim(),
+      episodes: eps, doneEpisodes: doneEps, lastViewer, tags,
+      createdAt: Date.now(), updatedAt: Date.now() });
+  }
+  clearForm(); saveData(); renderTable(); updateStats();
+  showToast('✅ 저장됐어요!');
+}
+
+function clearForm() {
+  ['f-title','f-author','f-author-link','f-url','f-tags'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-episodes').value = '';
+  document.getElementById('f-done-ep').value = '';
+  document.getElementById('f-last-viewer').value = '';
+  document.getElementById('f-viewer-preview').style.display = 'none';
+  editingId = null;
+  document.querySelector('#add-form h3').textContent = '+ 작품 추가';
+}
+
+function editWork(id) {
+  const w = works.find(x => x.id === id);
+  if (!w) return;
+  editingId = id;
+  document.getElementById('f-title').value = w.title;
+  document.getElementById('f-author').value = w.author || '';
+  document.getElementById('f-author-link').value = w.authorLink || '';
+  document.getElementById('f-url').value = w.url || '';
+  document.getElementById('f-episodes').value = w.episodes || '';
+  document.getElementById('f-done-ep').value = w.doneEpisodes || '';
+  document.getElementById('f-last-viewer').value = w.lastViewer || '';
+  document.getElementById('f-tags').value = (w.tags||[]).join(', ');
+  if (w.lastViewer) {
+    const link = document.getElementById('f-viewer-preview');
+    link.href = 'https://novelpia.com/viewer/' + w.lastViewer;
+    link.style.display = 'inline';
+  }
+  document.querySelector('#add-form h3').textContent = '✏️ 작품 수정';
+  document.getElementById('add-form').scrollIntoView({behavior:'smooth'});
+}
+
+function deleteWork(id) {
+  if (!confirm('이 작품을 삭제할까요?')) return;
+  works = works.filter(w => w.id !== id);
+  saveData(); renderTable(); updateStats();
+}
+
+function cycleStatus(id) {
+  const w = works.find(x => x.id === id);
+  if (!w) return;
+  const s = getStatus(w);
+  if (s === 'todo') w.doneEpisodes = Math.ceil((w.episodes||1)/2);
+  else if (s === 'partial') w.doneEpisodes = w.episodes || 1;
+  else w.doneEpisodes = 0;
+  saveData(); renderTable(); updateStats();
+}
+
+function renderTable() {
+  const query = document.getElementById('search-input').value.toLowerCase();
+  const statusF = document.getElementById('status-filter').value;
+  let filtered = works.filter(w => {
+    const match = !query ||
+      w.title?.toLowerCase().includes(query) ||
+      w.author?.toLowerCase().includes(query) ||
+      (w.tags||[]).some(t => t.toLowerCase().includes(query));
+    return match && (!statusF || getStatus(w) === statusF);
+  });
+
+  const container = document.getElementById('table-container');
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div style="font-size:32px;">📭</div><p style="margin-top:8px">${works.length===0?'아직 추가된 작품이 없어요. 노벨피아 페이지에서 북마클릿을 실행해보세요!':'검색 결과가 없어요.'}</p></div>`;
+    return;
+  }
+
+  const rows = filtered.map(w => {
+    const s = getStatus(w);
+    const [cls, lbl] = statusLabel(s);
+    const pct = w.episodes ? Math.round((w.doneEpisodes||0)/w.episodes*100) : 0;
+    const tagsHtml = (w.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('');
+    const newBadge = w.isNew ? `<span class="new-badge">NEW</span>` : '';
+    const titleHtml = w.url
+      ? `<a class="title-link" href="${w.url}" target="_blank">${w.title}</a>${newBadge}`
+      : `<span style="font-weight:500">${w.title}</span>${newBadge}`;
+    const authorHtml = w.authorLink
+      ? `<a class="author-link" href="${w.authorLink}" target="_blank">${w.author||'-'}</a>`
+      : `<span>${w.author||'-'}</span>`;
+    const viewerHtml = w.lastViewer
+      ? `<a class="viewer-link" href="https://novelpia.com/viewer/${w.lastViewer}" target="_blank">${w.lastViewer}</a>`
+      : `<span style="color:#ccc">-</span>`;
+    return `<tr>
+      <td style="width:220px">${titleHtml}</td>
+      <td style="width:110px">${authorHtml}</td>
+      <td style="width:190px"><div class="tag-list">${tagsHtml||'-'}</div></td>
+      <td style="width:130px"><div class="progress-wrap"><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div><span class="progress-text">${w.doneEpisodes||0}/${w.episodes||0}</span></div></td>
+      <td style="width:100px"><button class="status-badge ${cls}" onclick="cycleStatus(${w.id})" title="클릭해서 상태 변경">${lbl}</button></td>
+      <td style="width:100px">${viewerHtml}</td>
+      <td style="width:90px"><div class="actions-cell">
+        <button class="btn secondary small" onclick="editWork(${w.id})">수정</button>
+        <button class="btn secondary small" style="color:#c0392b" onclick="deleteWork(${w.id})">삭제</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `<table>
+    <thead><tr>
+      <th>작품명</th><th>작가</th><th>태그</th>
+      <th>캡처 진행</th><th>상태</th><th>마지막 회차</th><th>관리</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = works.length;
+  document.getElementById('stat-done').textContent = works.filter(w=>getStatus(w)==='done').length;
+  document.getElementById('stat-partial').textContent = works.filter(w=>getStatus(w)==='partial').length;
+  document.getElementById('stat-todo').textContent = works.filter(w=>getStatus(w)==='todo').length;
+}
+
+function copyBookmarklet() {
+  const code = document.getElementById('bm-code').textContent;
+  navigator.clipboard.writeText(code).then(()=>showToast('📋 복사됐어요! 북마크 편집 → URL 자리에 붙여넣기 하세요.'));
+}
+
+function exportCSV() {
+  const header = ['작품명','작가','작가링크','태그','전체회차','완료회차','상태','마지막viewer','링크'];
+  const rows = works.map(w => [
+    `"${w.title||''}"`, `"${w.author||''}"`, `"${w.authorLink||''}"`,
+    `"${(w.tags||[]).join('|')}"`, w.episodes||0, w.doneEpisodes||0,
+    getStatus(w), w.lastViewer||'', `"${w.url||''}"`
+  ]);
+  const csv = [header, ...rows].map(r=>r.join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `novelpia_works_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(works, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `novelpia_backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
+}
+
+function importJSON(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('올바른 형식이 아니에요');
+      if (!confirm(`${data.length}개 작품을 불러올까요?`)) return;
+      const existIds = new Set(works.map(w=>w.id));
+      data.forEach(w => { if (!existIds.has(w.id)) works.push(w); });
+      saveData(); renderTable(); updateStats();
+      showToast('✅ 복원 완료!');
+    } catch(err) { alert('파일 오류: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+loadData();
+renderTable();
+updateStats();
+checkImportFromURL();
+</script>
 </body>
 </html>
